@@ -1,0 +1,14 @@
+name: 'gdelt_test'
+version: '1.0.0'
+profile: 'gdelt_test'
+
+model-paths: ['models']
+analysis-paths: ['analyses']
+test-paths: ['tests']
+seed-paths: ['seeds']
+snapshot-paths: ['snapshots']
+macro-paths: ['macros']
+
+clean-targets:
+  - "target"
+  - "dbt_packages"

@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Average Tone - 5 графиков</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.3.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; }
+        .chart-container {
+            width: 90%;
+            max-width: 1000px;
+            margin: 40px auto;
+        }
+        canvas { margin-bottom: 60px; }
+    </style>
+</head>
+<body>
+    <h1 style="text-align:center;">Average Tone для разных политиков</h1>
+
+    <div class="chart-container">
+        <h3>Trump</h3>
+        <canvas id="chartTrump"></canvas>
+    </div>
+
+    <div class="chart-container">
+        <h3>Biden</h3>
+        <canvas id="chartBiden"></canvas>
+    </div>
+
+    <div class="chart-container">
+        <h3>Putin</h3>
+        <canvas id="chartPutin"></canvas>
+    </div>
+
+    <div class="chart-container">
+        <h3>Kirk</h3>
+        <canvas id="chartKirk"></canvas>
+    </div>
+
+    <div class="chart-container">
+        <h3>Qiang</h3>
+        <canvas id="chartQiang"></canvas>
+    </div>
+    <div class="chart-container">
+        <h3>Jinping</h3>
+        <canvas id="chartJinping"></canvas>
+    </div>
+
+    <script>
+        const svoDate = '2022-02-24 00:00:00';
+        const pres_vote = '2024-11-04 00:00:00';
+        async function createChart(canvasId, dataUrl, labelName, color) {
+            try {
+                const response = await fetch(dataUrl);
+                const data = await response.json();
+
+                if (!data.datetime || !data.rolling_avg_90d) {
+                    console.error('Неверный формат данных с', dataUrl);
+                    return;
+                }
+
+                const ctx = document.getElementById(canvasId).getContext('2d');
+                new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: data.datetime,
+                        datasets: [{
+                            label: labelName,
+                            data: data.rolling_avg_90d,
+                            borderColor: color,
+                            backgroundColor: color + '33', // прозрачность
+                            tension: 0.2,
+                            borderWidth: 2,
+                            pointRadius: 0
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        scales: {
+                            x: { title: { display: true, text: 'Дата и время' } },
+                            y: { title: { display: true, text: 'Average Tone' },
+                                min: -3.5,
+                                max: 3.5 }
+                        }
+                    }
+                });
+            } catch (err) {
+                console.error('Ошибка загрузки данных с', dataUrl, err);
+            }
+        }
+
+        // Создаём все 5 графиков
+        createChart('chartTrump', 'data_trump.php', 'Trump', 'blue');
+        createChart('chartBiden', 'data_biden.php', 'Biden', 'green');
+        createChart('chartPutin', 'data_putin.php', 'Putin', 'red');
+        createChart('chartKirk', 'data_kirk.php', 'Kirk', 'orange');
+        createChart('chartQiang', 'data_qiang.php', 'Qiang', 'purple');
+        createChart('chartJinping', 'data_xi.php', 'Jinping', 'brown');
+    </script>
+<div class="chart-container">
+    <h3>Сравнение всех политиков</h3>
+    <canvas id="chartAll"></canvas>
+</div>
+
+<script>
+async function createCombinedChart() {
+    // Массив данных: url, label и цвет
+    const politicians = [
+        { url: 'data_trump.php', label: 'Trump', color: 'blue' },
+        { url: 'data_biden.php', label: 'Biden', color: 'green' },
+        { url: 'data_putin.php', label: 'Putin', color: 'red' },
+        { url: 'data_kirk.php', label: 'Kirk', color: 'orange' },
+        { url: 'data_qiang.php', label: 'Qiang', color: 'purple' },
+        { url: 'data_xi.php', label: 'Jinping', color: 'brown' }
+    ];
+
+    // Подгружаем все данные параллельно
+    const results = await Promise.all(politicians.map(p => fetch(p.url).then(r => r.json())));
+
+    // Предполагаем, что все графики синхронизированы по datetime (одинаковые метки)
+    const labels = results[0].datetime;
+    const allDates = Array.from(new Set(results.flatMap(d => d.datetime))).sort();
+    const datasets = results.map((data, i) => ({
+        label: politicians[i].label,
+        data: allDates.map(dt => {
+            const idx = data.datetime.indexOf(dt);
+            return idx !== -1 ? data.rolling_avg_90d[idx] : null;
+        }),
+        //#data.rolling_avg_90d,
+        borderColor: politicians[i].color,
+        backgroundColor: politicians[i].color + '33',
+        tension: 0.2,
+        borderWidth: 2,
+        pointRadius: 0
+    }));
+
+    const ctx = document.getElementById('chartAll').getContext('2d');
+    new Chart(ctx, {
+        type: 'line',
+        data: { labels, datasets },
+        options: {
+            responsive: true,
+            scales: {
+                x: { title: { display: true, text: 'Дата и время' } },
+                y: { title: { display: true, text: 'Average Tone' }, min: -3.5, max: 3.5 }
+            },
+    plugins: {
+        annotation: {
+            annotations: {
+                svoLine: {
+                    type: 'line',
+                    xMin: svoDate,
+                    xMax: svoDate,
+                    borderColor: 'black',
+                    borderWidth: 2,
+                    borderDash: [6, 6],
+                    label: {
+                        display: true,
+                        content: 'СВО',
+                        position: 'start',
+                        backgroundColor: 'rgba(0,0,0,0.7)',
+                        color: 'white',
+                        font: {
+                            size: 12,
+                            weight: 'bold'
+                        }
+                    }
+                }
+            }
+        }
+    }
+        }
+    });
+}
+
+// Создаём комбинированный график
+createCombinedChart();
+</script>
+</body>
+</html>
+
+
+
+
